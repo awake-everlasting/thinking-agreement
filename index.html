@@ -156,7 +156,7 @@ textarea{resize:vertical;min-height:62px;line-height:1.55}
 #card .chip.dim{opacity:.35}
 #card .chip-all{border-style:dashed;font-weight:600;color:var(--sub)}
 #card .legend .chip-all{color:inherit;opacity:.8}
-#card .dot{width:9px;height:9px;border-radius:50%;display:inline-block;flex:none}
+#card .dot{width:0;height:0;border:5px solid currentColor;border-radius:50%;display:inline-block;flex:none;vertical-align:middle}
 #card .sec-t{font:700 11px/1 var(--mono);letter-spacing:.2em;color:var(--sub);display:flex;align-items:center;gap:10px;margin:30px 0 10px;text-transform:uppercase}
 #card .sec-t::after{content:"";flex:1;border-top:1px solid var(--line)}
 #card .monitor{background:var(--mon-bg);border:1px solid var(--mon-border);padding:10px 12px 10px;color:var(--mon-ink)}
@@ -168,7 +168,7 @@ textarea{resize:vertical;min-height:62px;line-height:1.55}
 #card .legend{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:8px;font:600 11.5px/1.4 var(--mono)}
 #card .legend span{display:inline-flex;align-items:center;gap:6px;cursor:pointer}
 #card .legend span.dim{opacity:.35}
-#card .legend i{width:18px;height:3px;display:inline-block;border-radius:2px}
+#card .legend .ln{width:18px;height:0;border-top:3px solid currentColor;display:inline-block;border-radius:2px}
 #card .ix-row{display:grid;grid-template-columns:38px 1fr 150px 50px;gap:12px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line);font-size:13.5px;cursor:pointer}
 #card .ix-no{font:700 11px var(--mono);color:var(--accent)}
 #card .ix-t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -717,7 +717,7 @@ function applyCardStyle(){
 function renderCard(){
   applyCardStyle();
   const chars = state.chars, avg = avgMatch();
-  const chipHTML = chars.map((c,i)=>`<span class="chip ${isDim(c.id)?'dim':''}" data-focus="${c.id}"><i class="dot" style="background:${charColor(c,i)}"></i>${fmt(c.name)}</span>`).join('');
+  const chipHTML = chars.map((c,i)=>`<span class="chip ${isDim(c.id)?'dim':''}" data-focus="${c.id}"><span class="dot" style="color:${charColor(c,i)}"></span>${fmt(c.name)}</span>`).join('');
   const crit = splitTop(state.criteria).map(x=>`<span>${fmt(x.replace(/([^\s(（])\s*([(（])/g,'$1 $2'))}</span>`).join('');
   let h = `
   <div class="c-top" data-ps="cover" data-label="표지 · 측정 정보"><span>${fmt(state.org)}</span><span>${fmt(state.docNo)}</span><span>${fmt(state.date)}</span></div>
@@ -737,7 +737,7 @@ function renderCard(){
   <div class="monitor" ${(state.showIndex&&state.sits.length)?'':'data-pe="overview"'}>
     <div class="mon-head"><span class="live"><i></i>LIVE · SYNC MONITOR</span><span class="avg">AVG SYNC<b>${avg??'--'}%</b></span></div>
     <canvas class="ecg" data-kind="overview"></canvas>
-    <div class="legend">${focusSet.size?`<span class="chip-all" data-focus="__all">↺ 전체 보기</span>`:''}${chars.map((c,i)=>`<span data-focus="${c.id}" class="${isDim(c.id)?'dim':''}"><i style="background:${charColor(c,i)}"></i>${esc(c.name.replace(/[*_~=]/g,''))}</span>`).join('')}</div>
+    <div class="legend">${focusSet.size?`<span class="chip-all" data-focus="__all">↺ 전체 보기</span>`:''}${chars.map((c,i)=>`<span data-focus="${c.id}" class="${isDim(c.id)?'dim':''}"><span class="ln" style="color:${charColor(c,i)}"></span>${esc(c.name.replace(/[*_~=]/g,''))}</span>`).join('')}</div>
   </div>`;
   if(state.showIndex && state.sits.length) h += `
   <div class="sec-t" ${state.showMonitor?'':'data-ps="overview" data-label="일치율 지수"'}>Sync Index · 일치율 지수</div>
@@ -753,7 +753,7 @@ function renderCard(){
       </div>
       ${s.desc?`<div class="sit-desc">${fmt(s.desc)}</div>`:''}
       ${state.showStrips?`<div class="monitor"><canvas class="ecg" data-kind="sit" data-i="${i}"></canvas></div>`:''}
-      <div class="th-list">${chars.map((c,ci)=>`<div class="th-row"><div class="th-name"><i class="dot" style="background:${charColor(c,ci)}"></i><div>${fmt(c.name)}<small>의 생각</small></div></div><div class="th-txt">${fmt(s.thoughts[c.id]||'')}</div></div>`).join('')}</div>
+      <div class="th-list">${chars.map((c,ci)=>`<div class="th-row"><div class="th-name"><span class="dot" style="color:${charColor(c,ci)}"></span><div>${fmt(c.name)}<small>의 생각</small></div></div><div class="th-txt">${fmt(s.thoughts[c.id]||'')}</div></div>`).join('')}</div>
       ${s.comment?`<div class="sit-comment"><span class="lb">COMMENT · 소견</span>${fmt(s.comment)}</div>`:''}
     </article>`;
   });
@@ -1254,9 +1254,11 @@ function partList(){
   const {cr,k}=cardRel(), H=card.offsetHeight, PAD=26, parts=[];
   $$('[data-ps]',card).forEach(st=>{
     const id=st.dataset.ps, en=card.querySelector(`[data-pe="${id}"]`)||st;
-    let y0=(st.getBoundingClientRect().top-cr.top)*k, y1=(en.getBoundingClientRect().bottom-cr.top)*k;
-    y0 = id==='cover' ? 0 : Math.max(0,y0-PAD);
-    y1 = id==='summary' ? H : Math.min(H,y1+PAD+(st.querySelector('.stamp')?20:0));
+    const Y = (el,side) => (el.getBoundingClientRect()[side]-cr.top)*k;
+    let y0=Y(st,'top'), y1=Y(en,'bottom');
+    const prev=st.previousElementSibling, next=en.nextElementSibling;
+    y0 = id==='cover' ? 0 : Math.max(0, y0-PAD, prev ? Y(prev,'bottom')+2 : 0);
+    y1 = id==='summary' ? H : Math.min(H, y1+PAD, next ? Y(next,'top')-2 : H);
     const anim = $$('canvas.ecg',card).some(cv=>{ const r=cv.getBoundingClientRect(), t=(r.top-cr.top)*k; return t>=y0 && t<y1; });
     parts.push({id,label:st.dataset.label||id,y0:Math.round(y0),y1:Math.round(y1),anim});
   });
